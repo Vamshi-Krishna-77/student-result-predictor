@@ -1,7 +1,7 @@
+from django.shortcuts import render
 import os
 import joblib
 import pandas as pd
-from django.shortcuts import render
 
 # Load model
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -42,19 +42,27 @@ def home(request):
             prob = model.predict_proba(df)[0][prediction]
 
             confidence = round(prob * 100, 2)
-
             result = "PASS" if prediction == 1 else "FAIL"
 
-            # ✅ Feature Importance (Top 5)
-            clf = model.named_steps["clf"]
-            importances = clf.feature_importances_
+            # ✅ Feature Importance (Safe)
+            try:
+                if hasattr(model, "feature_importances_"):
+                    importances = model.feature_importances_
+                elif hasattr(model, "named_steps"):
+                    clf = model.named_steps.get("clf")
+                    importances = clf.feature_importances_
+                else:
+                    importances = [0] * len(df.columns)
 
-            feature_names = df.columns.tolist()
-            feature_data = sorted(
-                zip(feature_names, importances),
-                key=lambda x: x[1],
-                reverse=True
-            )[:5]
+                feature_names = df.columns.tolist()
+                feature_data = sorted(
+                    zip(feature_names, importances),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:5]
+
+            except:
+                feature_data = None
 
         except Exception as e:
             result = f"Error: {str(e)}"
